@@ -1,3 +1,5 @@
+[![Go](https://github.com/TurningOfTables/planespotter/actions/workflows/go.yml/badge.svg)](https://github.com/TurningOfTables/planespotter/actions/workflows/go.yml)
+
 # planespotter v0.1
 
 ## Description
