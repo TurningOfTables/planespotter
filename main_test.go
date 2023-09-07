@@ -4,39 +4,93 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCalculateSearchArea(t *testing.T) {
-
-	invalidDataTests := []Position{
-		{Latitude: 200, Longitude: 0},
-		{Latitude: 0, Longitude: 200},
-		{Latitude: 200, Longitude: 200},
+func TestParsePosition(t *testing.T) {
+	if err := os.Setenv("LONGITUDE", "45.000"); err != nil {
+		t.Error(err)
+	}
+	if err := os.Setenv("LATITUDE", "51.000"); err != nil {
+		t.Error(err)
 	}
 
-	for _, data := range invalidDataTests {
-		if _, err := calculateSearchArea(data); err == nil {
-			t.Errorf("calculateSearchArea(%+v) expected error, got nil", data)
-		}
-
+	res, err := parsePosition()
+	if err != nil {
+		t.Error(err)
 	}
 
-	validDataTests := []Position{
-		{Latitude: 40.730610, Longitude: -73.935242},
-		{Latitude: 51.503399, Longitude: -0.119519},
-		{Latitude: 22.302711, Longitude: 22.302711},
+	assert.Equal(t, Position{Longitude: 45.000, Latitude: 51.000}, res)
+}
+
+func TestParsePositionErrors(t *testing.T) {
+	if err := os.Setenv("LONGITUDE", "999.000"); err != nil {
+		t.Error(err)
+	}
+	if err := os.Setenv("LATITUDE", "51.000"); err != nil {
+		t.Error(err)
 	}
 
-	for _, data := range validDataTests {
-		res, err := calculateSearchArea(data)
-		if err != nil {
-			t.Errorf("calculateSearchArea(%+v) expected nil, got error", data)
-		}
+	_, err := parsePosition()
+	if assert.Error(t, err) {
+		assert.Equal(t, "Longitude of 999 invalid. Must be between 90 and -90", err.Error())
+	}
 
-		assert.IsType(t, SearchArea{}, res)
+	if err := os.Setenv("LONGITUDE", "50.000"); err != nil {
+		t.Error(err)
+	}
+	if err := os.Setenv("LATITUDE", "222.000"); err != nil {
+		t.Error(err)
+	}
+
+	_, err = parsePosition()
+	if assert.Error(t, err) {
+		assert.Equal(t, "Latitude of 222 invalid. Must be between 180 and -180", err.Error())
+	}
+}
+
+func TestParseApiAuth(t *testing.T) {
+	if err := os.Setenv("OPENSKY_USERNAME", "abc"); err != nil {
+		t.Error(err)
+	}
+	if err := os.Setenv("OPENSKY_PASSWORD", "def"); err != nil {
+		t.Error(err)
+	}
+
+	res, err := parseApiAuth()
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, ApiAuth{username: "abc", password: "def"}, res)
+}
+
+func TestParseApiAuthErrors(t *testing.T) {
+	if err := os.Setenv("OPENSKY_USERNAME", ""); err != nil {
+		t.Error(err)
+	}
+	if err := os.Setenv("OPENSKY_PASSWORD", "abc"); err != nil {
+		t.Error(err)
+	}
+
+	_, err := parseApiAuth()
+	if assert.Error(t, err) {
+		assert.Equal(t, "Error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env", err.Error())
+	}
+
+	if err := os.Setenv("OPENSKY_USERNAME", "def"); err != nil {
+		t.Error(err)
+	}
+	if err := os.Setenv("OPENSKY_PASSWORD", ""); err != nil {
+		t.Error(err)
+	}
+
+	_, err = parseApiAuth()
+	if assert.Error(t, err) {
+		assert.Equal(t, "Error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env", err.Error())
 	}
 }
 

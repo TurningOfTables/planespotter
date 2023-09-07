@@ -71,19 +71,17 @@ func main() {
 		log.Panic("Error loading env vars.")
 	}
 
-	lat, err := strconv.ParseFloat(os.Getenv("LATITUDE"), 64)
-	long, err := strconv.ParseFloat(os.Getenv("LONGITUDE"), 64)
-	if err != nil {
-		log.Panicf("Error reading position (latitude: %v/longitude: %v)", lat, long)
-	}
-	position := Position{Latitude: lat, Longitude: long}
-
-	sa, err := calculateSearchArea(position)
+	position, err := parsePosition()
 	if err != nil {
 		log.Panic(err)
 	}
 
-	auth := ApiAuth{username: os.Getenv("OPENSKY_USERNAME"), password: os.Getenv("OPENSKY_PASSWORD")}
+	sa := calculateSearchArea(position)
+
+	auth, err := parseApiAuth()
+	if err != nil {
+		log.Panic(err)
+	}
 
 	searchUrl, err := url.Parse(baseUrl)
 	if err != nil {
@@ -109,18 +107,8 @@ func main() {
 	}
 }
 
-func calculateSearchArea(position Position) (SearchArea, error) {
+func calculateSearchArea(position Position) SearchArea {
 	var sa SearchArea
-
-	// Check long and lat are valid
-	if position.Latitude > 180 || position.Latitude < -180 {
-		error := fmt.Sprintf("Latitude of %v invalid. Must be between 180 and -180", position.Latitude)
-		return sa, errors.New(error)
-	}
-	if position.Longitude > 90 || position.Longitude < -90 {
-		error := fmt.Sprintf("Longitude of %v invalid. Must be between 90 and -90", position.Longitude)
-		return sa, errors.New(error)
-	}
 
 	// Calculate offsets either side of position
 	latSpotOffset := helpers.KmToLatitude(spotDistanceKm)
@@ -131,7 +119,7 @@ func calculateSearchArea(position Position) (SearchArea, error) {
 	sa.laMin = fmt.Sprintf("%v", position.Latitude-latSpotOffset)
 	sa.loMax = fmt.Sprintf("%v", position.Longitude+longSpotOffset)
 	sa.loMin = fmt.Sprintf("%v", position.Longitude-longSpotOffset)
-	return sa, nil
+	return sa
 }
 
 func parseResult(res []interface{}) PlaneInfo {
@@ -145,6 +133,45 @@ func parseResult(res []interface{}) PlaneInfo {
 	p.True_Track = helpers.FormatTrueTrack(res[10])
 
 	return p
+}
+
+func parsePosition() (Position, error) {
+	var p Position
+	lat, err := strconv.ParseFloat(os.Getenv("LATITUDE"), 64)
+	long, err := strconv.ParseFloat(os.Getenv("LONGITUDE"), 64)
+	if err != nil {
+		return p, err
+	}
+
+	// Check long and lat are valid
+	if lat > 180 || lat < -180 {
+		error := fmt.Sprintf("Latitude of %v invalid. Must be between 180 and -180", lat)
+		return p, errors.New(error)
+	}
+	if long > 90 || long < -90 {
+		error := fmt.Sprintf("Longitude of %v invalid. Must be between 90 and -90", long)
+		return p, errors.New(error)
+	}
+
+	p.Latitude = lat
+	p.Longitude = long
+
+	return p, nil
+}
+
+func parseApiAuth() (ApiAuth, error) {
+	var a ApiAuth
+
+	username := os.Getenv("OPENSKY_USERNAME")
+	password := os.Getenv("OPENSKY_PASSWORD")
+
+	if username == "" || password == "" {
+		return a, errors.New("Error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env")
+	}
+
+	a.username = username
+	a.password = password
+	return a, nil
 }
 
 func updatePlanes(url string) []PlaneInfo {
