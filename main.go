@@ -254,7 +254,7 @@ func saveProgress(savePath string, p PlaneInfo) {
 		s.Callsigns = append(s.Callsigns, p.Callsign)
 	}
 
-	f, err := os.OpenFile(savePath, os.O_APPEND, 0644)
+	f, err := os.OpenFile(savePath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Printf("Error saving progress: %v", err)
 	}
