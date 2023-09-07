@@ -22,8 +22,8 @@ const baseUrl = "opensky-network.org/api/states/all?"
 const maxHistory = 5
 const spotDistanceKm = 20
 const checkEverySeconds = 60
-const savePath = "save.json"
 
+var savePath = "save.json"
 var seen []string
 
 type SearchArea struct {
@@ -138,6 +138,10 @@ func parseResult(res []interface{}) PlaneInfo {
 func parsePosition() (Position, error) {
 	var p Position
 	lat, err := strconv.ParseFloat(os.Getenv("LATITUDE"), 64)
+	if err != nil {
+		return p, err
+	}
+
 	long, err := strconv.ParseFloat(os.Getenv("LONGITUDE"), 64)
 	if err != nil {
 		return p, err
@@ -166,7 +170,7 @@ func parseApiAuth() (ApiAuth, error) {
 	password := os.Getenv("OPENSKY_PASSWORD")
 
 	if username == "" || password == "" {
-		return a, errors.New("Error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env")
+		return a, errors.New("error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env")
 	}
 
 	a.username = username
@@ -177,7 +181,7 @@ func parseApiAuth() (ApiAuth, error) {
 func updatePlanes(url string) []PlaneInfo {
 	resp, err := http.Get(url)
 	if err != nil || resp.StatusCode != 200 {
-		panic(errors.New("Error getting response from server"))
+		panic(errors.New("error getting response from server"))
 	}
 
 	remainingRequests := resp.Header.Get("X-Rate-Limit-Remaining")
@@ -210,8 +214,8 @@ func notifyIfNew(planeInfos []PlaneInfo) {
 			continue
 		} else {
 			seen = append(seen, p.Icao24)
-			saveProgress(p)
-			stats, err := getSavedStats()
+			saveProgress(savePath, p)
+			stats, err := getSavedStats(savePath)
 			if err != nil {
 				log.Print("Error getting saved stats")
 			}
@@ -231,8 +235,8 @@ func notifyIfNew(planeInfos []PlaneInfo) {
 	}
 }
 
-func saveProgress(p PlaneInfo) {
-	err := createSaveIfNotExists()
+func saveProgress(savePath string, p PlaneInfo) {
+	err := createSaveIfNotExists(savePath)
 	if err != nil {
 		log.Printf("Error creating save: %v", err)
 	}
@@ -272,7 +276,7 @@ func saveProgress(p PlaneInfo) {
 	f.Sync()
 }
 
-func getSavedStats() (SaveData, error) {
+func getSavedStats(savePath string) (SaveData, error) {
 	var s SaveData
 	saveFile, err := os.ReadFile(savePath)
 	if err != nil {
@@ -283,7 +287,7 @@ func getSavedStats() (SaveData, error) {
 	return s, nil
 }
 
-func createSaveIfNotExists() error {
+func createSaveIfNotExists(savePath string) error {
 	_, err := os.Stat(savePath)
 	if errors.Is(err, os.ErrNotExist) {
 		f, err := os.Create(savePath)

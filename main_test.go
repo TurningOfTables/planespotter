@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+var testSavePath = "test_save.json"
 
 func TestParsePosition(t *testing.T) {
 	if err := os.Setenv("LONGITUDE", "45.000"); err != nil {
@@ -27,28 +30,42 @@ func TestParsePosition(t *testing.T) {
 }
 
 func TestParsePositionErrors(t *testing.T) {
-	if err := os.Setenv("LONGITUDE", "999.000"); err != nil {
-		t.Error(err)
-	}
-	if err := os.Setenv("LATITUDE", "51.000"); err != nil {
-		t.Error(err)
+
+	tests := []struct {
+		longitude     string
+		latitude      string
+		expectedError string
+	}{
+		{
+			longitude:     "999.000",
+			latitude:      "51.000",
+			expectedError: "Longitude of 999 invalid. Must be between 90 and -90",
+		},
+		{
+			longitude:     "50.000",
+			latitude:      "222.000",
+			expectedError: "Latitude of 222 invalid. Must be between 180 and -180",
+		},
+		{
+			longitude:     "foo",
+			latitude:      "51.000",
+			expectedError: `strconv.ParseFloat: parsing "foo": invalid syntax`,
+		},
+		{
+			longitude:     "48.000",
+			latitude:      "bar",
+			expectedError: `strconv.ParseFloat: parsing "bar": invalid syntax`,
+		},
 	}
 
-	_, err := parsePosition()
-	if assert.Error(t, err) {
-		assert.Equal(t, "Longitude of 999 invalid. Must be between 90 and -90", err.Error())
-	}
+	for _, test := range tests {
+		os.Setenv("LONGITUDE", test.longitude)
+		os.Setenv("LATITUDE", test.latitude)
 
-	if err := os.Setenv("LONGITUDE", "50.000"); err != nil {
-		t.Error(err)
-	}
-	if err := os.Setenv("LATITUDE", "222.000"); err != nil {
-		t.Error(err)
-	}
-
-	_, err = parsePosition()
-	if assert.Error(t, err) {
-		assert.Equal(t, "Latitude of 222 invalid. Must be between 180 and -180", err.Error())
+		_, err := parsePosition()
+		if assert.Error(t, err) {
+			assert.Equal(t, test.expectedError, err.Error())
+		}
 	}
 }
 
@@ -69,28 +86,32 @@ func TestParseApiAuth(t *testing.T) {
 }
 
 func TestParseApiAuthErrors(t *testing.T) {
-	if err := os.Setenv("OPENSKY_USERNAME", ""); err != nil {
-		t.Error(err)
-	}
-	if err := os.Setenv("OPENSKY_PASSWORD", "abc"); err != nil {
-		t.Error(err)
+
+	tests := []struct {
+		username      string
+		password      string
+		expectedError string
+	}{
+		{
+			username:      "",
+			password:      "def",
+			expectedError: "error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env",
+		},
+		{
+			username:      "abc",
+			password:      "",
+			expectedError: "error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env",
+		},
 	}
 
-	_, err := parseApiAuth()
-	if assert.Error(t, err) {
-		assert.Equal(t, "Error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env", err.Error())
-	}
+	for _, test := range tests {
+		os.Setenv("OPENSKY_USERNAME", test.username)
+		os.Setenv("OPENSKY_PASSWORD", test.password)
 
-	if err := os.Setenv("OPENSKY_USERNAME", "def"); err != nil {
-		t.Error(err)
-	}
-	if err := os.Setenv("OPENSKY_PASSWORD", ""); err != nil {
-		t.Error(err)
-	}
-
-	_, err = parseApiAuth()
-	if assert.Error(t, err) {
-		assert.Equal(t, "Error getting OPENSKY_USERNAME or OPENSKY_PASSWORD from env", err.Error())
+		_, err := parseApiAuth()
+		if assert.Error(t, err) {
+			assert.Equal(t, test.expectedError, err.Error())
+		}
 	}
 }
 
@@ -183,7 +204,7 @@ func TestUpdatePlanesErrors(t *testing.T) {
 	}))
 	defer failingServer.Close()
 
-	assert.PanicsWithError(t, `Error getting response from server`, func() { updatePlanes(failingServer.URL) })
+	assert.PanicsWithError(t, `error getting response from server`, func() { updatePlanes(failingServer.URL) })
 
 	missingResBodyServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -197,4 +218,99 @@ func TestUpdatePlanesErrors(t *testing.T) {
 	}))
 
 	assert.PanicsWithError(t, `unexpected end of JSON input`, func() { updatePlanes(badlyFormedResBodyServer.URL) })
+}
+
+func TestCreateSaveIfNotExists(t *testing.T) {
+	_, err := os.Stat(testSavePath)
+	if !errors.Is(err, os.ErrNotExist) {
+		os.Remove(testSavePath)
+	}
+
+	err = createSaveIfNotExists(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	f, err := os.ReadFile(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.FileExists(t, testSavePath)
+	var s SaveData
+
+	json.Unmarshal(f, &s)
+	assert.Equal(t, 0, s.SeenCount)
+	assert.IsType(t, []string{}, s.Callsigns)
+
+	err = os.Remove(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+}
+
+func TestSaveProgress(t *testing.T) {
+	err := createSaveIfNotExists(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	p := PlaneInfo{
+		Icao24:        "testicao",
+		Callsign:      "testcallsign",
+		Baro_Altitude: "18227 ft",
+		On_Ground:     "true",
+		Velocity:      "887 kts",
+		True_Track:    "123°",
+	}
+
+	saveProgress(testSavePath, p)
+
+	var s SaveData
+	saveFile, err := os.ReadFile(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	json.Unmarshal(saveFile, &s)
+
+	expectedSave := SaveData{SeenCount: 1, Callsigns: []string{"testcallsign"}}
+	assert.Equal(t, expectedSave, s)
+
+	err = os.Remove(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestGetSavedStats(t *testing.T) {
+	err := createSaveIfNotExists(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	p := PlaneInfo{
+		Icao24:        "testicao",
+		Callsign:      "testcallsign",
+		Baro_Altitude: "18227 ft",
+		On_Ground:     "true",
+		Velocity:      "887 kts",
+		True_Track:    "123°",
+	}
+
+	saveProgress(testSavePath, p)
+
+	s, err := getSavedStats(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedSave := SaveData{SeenCount: 1, Callsigns: []string{"testcallsign"}}
+	assert.Equal(t, expectedSave, s)
+
+	err = os.Remove(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
 }
