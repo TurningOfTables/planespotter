@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-func FormatTime(int) (string, error) {
-	return "Christmas", nil
-}
-
 func FormatIcao24(icao24 interface{}) string {
 	i, ok := icao24.(string)
 	if !ok {
@@ -55,7 +51,7 @@ func FormatVelocity(velocity interface{}) string {
 		return "N/A"
 	}
 
-	v *= 1.94384
+	v *= 1.94384 // convert m/s to knots
 	vKt := int(v)
 	return fmt.Sprintf("%v kts", vKt)
 }
