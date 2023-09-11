@@ -1,10 +1,17 @@
-package helpers
+package formatters
 
 import (
+	"encoding/json"
+	"errors"
+	"os"
+	"planespotter/helpers/save"
+	"planespotter/helpers/types"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var testSavePath = "test_save.json"
 
 func TestFormatIcao24(t *testing.T) {
 	tests := []struct {
@@ -182,4 +189,34 @@ func TestKmToLongitude(t *testing.T) {
 		res := KmToLongitude(test.inputKm, test.inputLat)
 		assert.Equal(t, test.expected, res)
 	}
+}
+
+func TestCreateSaveIfNotExists(t *testing.T) {
+	_, err := os.Stat(testSavePath)
+	if !errors.Is(err, os.ErrNotExist) {
+		os.Remove(testSavePath)
+	}
+
+	err = save.CreateSaveIfNotExists(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	f, err := os.ReadFile(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.FileExists(t, testSavePath)
+	var s types.SaveData
+
+	json.Unmarshal(f, &s)
+	assert.Equal(t, 0, s.SeenCount)
+	assert.IsType(t, []string{}, s.Callsigns)
+
+	err = os.Remove(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
 }
