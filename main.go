@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"planespotter/helpers/config"
 	"planespotter/helpers/formatters"
 	"planespotter/helpers/save"
 	"planespotter/helpers/types"
@@ -25,16 +24,17 @@ var savePath = "save.json"
 
 func main() {
 
-	config, err := config.ParseConfig()
-	if err != nil {
-		log.Panic("Error reading config")
-	}
-	sa := calculateSearchArea(config.Position, config.SpotDistanceKm)
-	err = save.CreateSaveIfNotExists(savePath)
+	err := save.CreateSaveIfNotExists(savePath)
 	if err != nil {
 		log.Panic("Error creating save file")
 	}
 
+	saveData, err := save.GetSave(savePath)
+	if err != nil {
+		log.Panic("Error loading save file")
+	}
+
+	sa := calculateSearchArea(saveData.Config.Position, saveData.Config.SpotDistanceKm)
 	searchUrl, err := url.Parse(baseUrl)
 	if err != nil {
 		log.Panic(err)
@@ -47,7 +47,7 @@ func main() {
 		"lomax": {sa.LoMax},
 	}
 
-	url := "https://" + config.ApiAuth.Username + ":" + config.ApiAuth.Password + "@" + searchUrl.String() + queryParams.Encode()
+	url := "https://" + saveData.ApiAuth.Username + ":" + saveData.ApiAuth.Password + "@" + searchUrl.String() + queryParams.Encode()
 
 	go func() {
 		for {
@@ -55,14 +55,14 @@ func main() {
 			planeInfos := updatePlanes(url)
 			log.Printf("Received %v planes", len(planeInfos))
 			notifyIfNew(planeInfos)
-			log.Printf("Waiting %vs...", config.CheckFreqSeconds)
-			time.Sleep(time.Duration(config.CheckFreqSeconds) * time.Second)
+			log.Printf("Waiting %vs...", saveData.CheckFreqSeconds)
+			time.Sleep(time.Duration(saveData.CheckFreqSeconds) * time.Second)
 
 			log.Println("Finished waiting")
 		}
 	}()
 
-	ui := ui.InitUi(savePath, config)
+	ui := ui.InitUi(savePath, saveData)
 	ui.Run()
 
 }
@@ -126,7 +126,7 @@ func parseResult(res []interface{}) types.PlaneInfo {
 }
 
 func notifyIfNew(planeInfos []types.PlaneInfo) {
-	saveData, err := save.GetSavedStats(savePath)
+	saveData, err := save.GetSave(savePath)
 	if err != nil {
 		log.Printf("Error getting saved stats: %v", err)
 	}

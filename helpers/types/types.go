@@ -24,9 +24,21 @@ type Result struct {
 	PlaneResults [][]interface{} `json:"states"`
 }
 
-type SaveData struct {
+type Config struct {
+	Position         Position
+	ApiAuth          ApiAuth
+	SpotDistanceKm   int
+	CheckFreqSeconds int
+}
+
+type Progress struct {
 	SeenCount int
 	Callsigns []string
+}
+
+type SaveData struct {
+	Config
+	Progress
 }
 
 type PlaneInfo struct {
@@ -36,11 +48,4 @@ type PlaneInfo struct {
 	On_Ground     string
 	Velocity      string
 	True_Track    string
-}
-
-type Config struct {
-	Position         Position
-	ApiAuth          ApiAuth
-	SpotDistanceKm   int
-	CheckFreqSeconds int
 }

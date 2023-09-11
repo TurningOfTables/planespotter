@@ -2,7 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"planespotter/helpers/config"
+	"planespotter/helpers/save"
 	"planespotter/helpers/types"
 	"strconv"
 
@@ -13,7 +13,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func InitUi(savePath string, c types.Config) fyne.App {
+func InitUi(savePath string, saveData types.SaveData) fyne.App {
 	icon, _ := fyne.LoadResourceFromPath("assets/plane.png")
 	ui := app.New()
 	ui.SetIcon(icon)
@@ -35,22 +35,22 @@ func InitUi(savePath string, c types.Config) fyne.App {
 	title := widget.NewLabelWithStyle("Configuration", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 	uiLatitude := widget.NewEntry()
-	uiLatitude.SetText(fmt.Sprintf("%v", c.Position.Latitude))
+	uiLatitude.SetText(fmt.Sprintf("%v", saveData.Position.Latitude))
 
 	uiLongitude := widget.NewEntry()
-	uiLongitude.SetText(fmt.Sprintf("%v", c.Position.Longitude))
+	uiLongitude.SetText(fmt.Sprintf("%v", saveData.Position.Longitude))
 
 	uiSpotDistance := widget.NewEntry()
-	uiSpotDistance.SetText(strconv.Itoa(c.SpotDistanceKm))
+	uiSpotDistance.SetText(strconv.Itoa(saveData.SpotDistanceKm))
 
 	uiCheckFreq := widget.NewEntry()
-	uiCheckFreq.SetText(strconv.Itoa(c.CheckFreqSeconds))
+	uiCheckFreq.SetText(strconv.Itoa(saveData.CheckFreqSeconds))
 
 	uiUsername := widget.NewEntry()
-	uiUsername.SetText(c.ApiAuth.Username)
+	uiUsername.SetText(saveData.ApiAuth.Username)
 
 	uiPassword := widget.NewPasswordEntry()
-	uiPassword.SetText(c.ApiAuth.Password)
+	uiPassword.SetText(saveData.ApiAuth.Password)
 
 	settingsForm := &widget.Form{
 		Items: []*widget.FormItem{
@@ -64,13 +64,13 @@ func InitUi(savePath string, c types.Config) fyne.App {
 		SubmitText: "Save",
 		OnSubmit: func() {
 			var newConfig types.Config
-			newConfig.Position.Latitude, _ = strconv.ParseFloat(uiLatitude.Text, 64)
-			newConfig.Position.Longitude, _ = strconv.ParseFloat(uiLongitude.Text, 64)
-			newConfig.ApiAuth.Username = uiUsername.Text
-			newConfig.ApiAuth.Password = uiPassword.Text
-			newConfig.SpotDistanceKm, _ = strconv.Atoi(uiSpotDistance.Text)
-			newConfig.CheckFreqSeconds, _ = strconv.Atoi(uiCheckFreq.Text)
-			config.SaveConfig(savePath, newConfig)
+			saveData.Position.Latitude, _ = strconv.ParseFloat(uiLatitude.Text, 64)
+			saveData.Position.Longitude, _ = strconv.ParseFloat(uiLongitude.Text, 64)
+			saveData.ApiAuth.Username = uiUsername.Text
+			saveData.ApiAuth.Password = uiPassword.Text
+			saveData.SpotDistanceKm, _ = strconv.Atoi(uiSpotDistance.Text)
+			saveData.CheckFreqSeconds, _ = strconv.Atoi(uiCheckFreq.Text)
+			save.SaveConfig(savePath, newConfig)
 		},
 	}
 

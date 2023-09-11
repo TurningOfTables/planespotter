@@ -5,7 +5,6 @@ go 1.21
 require (
 	fyne.io/fyne/v2 v2.4.0
 	github.com/gen2brain/beeep v0.0.0-20230812223410-3e1549ef0811
-	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 )

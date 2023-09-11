@@ -16,7 +16,7 @@ func SaveProgress(savePath string, p types.PlaneInfo) {
 		log.Printf("Error creating save: %v", err)
 	}
 
-	saveData, err := GetSavedStats(savePath)
+	saveData, err := GetSave(savePath)
 	if err != nil {
 		log.Printf("Error getting current saved state")
 	}
@@ -32,7 +32,7 @@ func SaveProgress(savePath string, p types.PlaneInfo) {
 	}
 	defer f.Close()
 
-	newSaveJson, err := json.Marshal(saveData)
+	newSaveJson, err := json.MarshalIndent(saveData, "", "    ")
 	if err != nil {
 		log.Printf("Error saving progress: %v", err)
 	}
@@ -41,14 +41,45 @@ func SaveProgress(savePath string, p types.PlaneInfo) {
 		log.Printf("Error removing old save data")
 	}
 
-	_, err = f.Write(newSaveJson)
+	err = os.WriteFile(savePath, newSaveJson, 0644)
 	if err != nil {
 		log.Printf("Error saving progress: %v", err)
 	}
 	f.Sync()
 }
 
-func GetSavedStats(savePath string) (types.SaveData, error) {
+func SaveConfig(savePath string, saveConfig types.Config) {
+	err := CreateSaveIfNotExists(savePath)
+	if err != nil {
+		log.Printf("Error creating save: %v", err)
+	}
+
+	currentSaveData, err := GetSave(savePath)
+	if err != nil {
+		log.Printf("Error getting current saved state")
+	}
+
+	var newSave = types.SaveData{
+		Config:   saveConfig,
+		Progress: currentSaveData.Progress,
+	}
+
+	newSaveJson, err := json.MarshalIndent(newSave, "", "    ")
+	if err != nil {
+		log.Printf("Error saving progress: %v", err)
+	}
+
+	if err := os.Truncate(savePath, 0); err != nil {
+		log.Printf("Error removing old save data")
+	}
+
+	err = os.WriteFile(savePath, newSaveJson, 0644)
+	if err != nil {
+		log.Printf("Error saving progress: %v", err)
+	}
+}
+
+func GetSave(savePath string) (types.SaveData, error) {
 	var s types.SaveData
 	saveFile, err := os.ReadFile(savePath)
 	if err != nil {
@@ -68,8 +99,15 @@ func CreateSaveIfNotExists(savePath string) error {
 		}
 		defer f.Close()
 
-		var s = types.SaveData{SeenCount: 0, Callsigns: []string{}}
-		saveJson, err := json.Marshal(s)
+		var s types.SaveData
+
+		// Set defaults
+		s.Config.Position.Latitude = 40.730610
+		s.Config.Position.Longitude = -73.935242
+		s.Config.CheckFreqSeconds = 60
+		s.Config.SpotDistanceKm = 20
+
+		saveJson, err := json.MarshalIndent(s, "", "    ")
 		if err != nil {
 			return err
 		}
