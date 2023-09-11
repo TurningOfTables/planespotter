@@ -133,7 +133,9 @@ func notifyIfNew(planeInfos []types.PlaneInfo) {
 
 	newPlanes := 0
 	for _, p := range planeInfos {
-		if slices.Contains(saveData.Callsigns, p.Icao24) {
+		if slices.Contains(saveData.Progress.Callsigns, p.Callsign) {
+			fmt.Println("Plane already exists so continuing")
+			fmt.Println(saveData.Progress)
 			continue
 		} else {
 			newPlanes++
