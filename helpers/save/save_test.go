@@ -67,7 +67,7 @@ func TestSaveProgress(t *testing.T) {
 
 	json.Unmarshal(saveFile, &s)
 
-	expectedSave := types.SaveData{Config: types.Config{Position: types.Position{Latitude: 0, Longitude: 0}, ApiAuth: types.ApiAuth{Username: "", Password: ""}, SpotDistanceKm: 0, CheckFreqSeconds: 0}, Progress: types.Progress{SeenCount: 1, Callsigns: []string{"testcallsign"}}}
+	expectedSave := types.SaveData{Config: types.Config{Position: types.Position{Latitude: 40.73061, Longitude: -73.935242}, ApiAuth: types.ApiAuth{Username: "", Password: ""}, SpotDistanceKm: 20, CheckFreqSeconds: 60}, Progress: types.Progress{SeenCount: 1, Callsigns: []string{"testcallsign"}}}
 	assert.Equal(t, expectedSave, s)
 
 	err = os.Remove(testSavePath)
@@ -98,7 +98,7 @@ func TestGetSavedStats(t *testing.T) {
 		t.Error(err)
 	}
 
-	expectedSave := types.SaveData{Config: types.Config{Position: types.Position{Latitude: 0, Longitude: 0}, ApiAuth: types.ApiAuth{Username: "", Password: ""}, SpotDistanceKm: 0, CheckFreqSeconds: 0}, Progress: types.Progress{SeenCount: 1, Callsigns: []string{"testcallsign"}}}
+	expectedSave := types.SaveData{Config: types.Config{Position: types.Position{Latitude: 40.73061, Longitude: -73.935242}, ApiAuth: types.ApiAuth{Username: "", Password: ""}, SpotDistanceKm: 20, CheckFreqSeconds: 60}, Progress: types.Progress{SeenCount: 1, Callsigns: []string{"testcallsign"}}}
 	assert.Equal(t, expectedSave, s)
 
 	err = os.Remove(testSavePath)
