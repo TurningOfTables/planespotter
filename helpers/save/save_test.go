@@ -76,6 +76,36 @@ func TestSaveProgress(t *testing.T) {
 	}
 }
 
+func TestSaveConfig(t *testing.T) {
+	err := CreateSaveIfNotExists(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	c := types.Config{
+		Position:         types.Position{Latitude: 48.00, Longitude: 2},
+		ApiAuth:          types.ApiAuth{Username: "blah", Password: "fluff"},
+		CheckFreqSeconds: 9,
+		SpotDistanceKm:   8,
+	}
+
+	SaveConfig(testSavePath, c)
+
+	save, err := GetSave(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedSave := types.SaveData(types.SaveData{Config: types.Config{Position: types.Position{Latitude: 48, Longitude: 2}, ApiAuth: types.ApiAuth{Username: "blah", Password: "fluff"}, SpotDistanceKm: 8, CheckFreqSeconds: 9}, Progress: types.Progress{SeenCount: 0, Callsigns: []string(nil)}})
+
+	assert.Equal(t, expectedSave, save)
+
+	err = os.Remove(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestGetSavedStats(t *testing.T) {
 	err := CreateSaveIfNotExists(testSavePath)
 	if err != nil {

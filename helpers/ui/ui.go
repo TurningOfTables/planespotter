@@ -7,33 +7,31 @@ import (
 	"strconv"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
 
-func InitUi(savePath string, saveData types.SaveData) fyne.App {
-	icon, _ := fyne.LoadResourceFromPath("assets/plane.png")
-	ui := app.New()
-	ui.SetIcon(icon)
-	uiWindow := ui.NewWindow("Planespotter")
-	uiWindow.SetCloseIntercept(func() {
-		uiWindow.Hide()
+func WindowSetup(app fyne.App, icon fyne.Resource) fyne.Window {
+	window := app.NewWindow("Planespotter")
+	window.SetCloseIntercept(func() {
+		window.Hide()
 	})
 
-	if desk, ok := ui.(desktop.App); ok {
+	if desk, ok := app.(desktop.App); ok {
 		m := fyne.NewMenu("Planespotter", fyne.NewMenuItem("Settings", func() {
-			uiWindow.Show()
+			window.Show()
 		}))
 		desk.SetSystemTrayIcon(icon)
 		desk.SetSystemTrayMenu(m)
 	}
-	uiWindow.Resize(fyne.NewSize(500, 200))
-	uiWindow.Hide()
+	window.Resize(fyne.NewSize(500, 200))
+	window.Hide()
 
-	title := widget.NewLabelWithStyle("Configuration", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	return window
+}
 
+func GenerateSettingsForm(savePath string, saveData types.SaveData) *fyne.Container {
 	uiLatitude := widget.NewEntry()
 	uiLatitude.SetText(fmt.Sprintf("%v", saveData.Position.Latitude))
 
@@ -64,16 +62,16 @@ func InitUi(savePath string, saveData types.SaveData) fyne.App {
 		SubmitText: "Save",
 		OnSubmit: func() {
 			var newConfig types.Config
-			saveData.Position.Latitude, _ = strconv.ParseFloat(uiLatitude.Text, 64)
-			saveData.Position.Longitude, _ = strconv.ParseFloat(uiLongitude.Text, 64)
-			saveData.ApiAuth.Username = uiUsername.Text
-			saveData.ApiAuth.Password = uiPassword.Text
-			saveData.SpotDistanceKm, _ = strconv.Atoi(uiSpotDistance.Text)
-			saveData.CheckFreqSeconds, _ = strconv.Atoi(uiCheckFreq.Text)
+			newConfig.Position.Latitude, _ = strconv.ParseFloat(uiLatitude.Text, 64)
+			newConfig.Position.Longitude, _ = strconv.ParseFloat(uiLongitude.Text, 64)
+			newConfig.ApiAuth.Username = uiUsername.Text
+			newConfig.ApiAuth.Password = uiPassword.Text
+			newConfig.SpotDistanceKm, _ = strconv.Atoi(uiSpotDistance.Text)
+			newConfig.CheckFreqSeconds, _ = strconv.Atoi(uiCheckFreq.Text)
 			save.SaveConfig(savePath, newConfig)
 		},
 	}
 
-	uiWindow.SetContent(container.NewVBox(title, settingsForm))
-	return ui
+	c := container.NewVBox(settingsForm)
+	return c
 }
