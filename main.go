@@ -7,18 +7,11 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"planespotter/helpers/formatters"
-	"planespotter/helpers/save"
 	"planespotter/helpers/types"
-	"planespotter/helpers/ui"
 	"time"
 
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/widget"
 	"github.com/gen2brain/beeep"
 	"golang.org/x/exp/slices"
 )
@@ -30,82 +23,36 @@ const StoppedText = "Stopped 🛑"
 const ErrorText = "Error ⚠️"
 
 var savePath = "save.json"
+var testSavePath = "test_save.json"
 var pauseLoop = make(chan bool)
 var started bool = false
 var status = binding.NewString()
 
 func main() {
-	_, window := initApp()
+	err := CreateSaveIfNotExists(savePath)
+	if err != nil {
+		log.Println("Error creating save file")
+	}
+
+	url, saveData := InitSaveData(savePath)
+	_, window := InitUi(url, savePath, saveData)
 
 	window.CenterOnScreen()
 	window.ShowAndRun()
 }
 
-func initApp() (fyne.App, fyne.Window) {
-	err := save.CreateSaveIfNotExists(savePath)
-	if err != nil {
-		log.Println("Error creating save file")
-	}
-
-	saveData, err := save.GetSave(savePath)
-	if err != nil {
-		log.Println("Error loading save file")
-	}
-
-	sa := calculateSearchArea(saveData.Config.Position, saveData.Config.SpotDistanceKm)
-	searchUrl, err := url.Parse(baseUrl)
-	if err != nil {
-		log.Println("Error parsing request URL")
-	}
-
-	queryParams := url.Values{
-		"lamin": {sa.LaMin},
-		"lomin": {sa.LoMin},
-		"lamax": {sa.LaMax},
-		"lomax": {sa.LoMax},
-	}
-
-	url := "https://" + saveData.ApiAuth.Username + ":" + saveData.ApiAuth.Password + "@" + searchUrl.String() + queryParams.Encode()
-
-	app, window := initUi(url, savePath, saveData)
-	return app, window
+func startUpdateLoop(url string, saveData types.SaveData) {
+	log.Println("Spotting started")
+	started = true
+	status.Set(StartedText)
+	go updateLoop(url, saveData)
 }
 
-func initUi(url, savePath string, saveData types.SaveData) (fyne.App, fyne.Window) {
-	icon, _ := fyne.LoadResourceFromPath("assets/plane.png")
-	app := app.New()
-	app.SetIcon(icon)
-	window := ui.WindowSetup(app, icon)
-
-	title := widget.NewLabelWithStyle("Configuration", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	settingsForm := ui.GenerateSettingsForm(savePath, saveData)
-
-	startButton := widget.NewButton("Start", func() {
-		if !started {
-			log.Println("Spotting started")
-			started = true
-			status.Set(StartedText)
-			go updateLoop(url, saveData)
-		}
-	})
-	stopButton := widget.NewButton("Stop", func() {
-		if started {
-			log.Println("Spotting stopped")
-			started = false
-			status.Set(StoppedText)
-			pauseLoop <- true
-		}
-	})
-
-	if started {
-		status.Set(StartedText)
-	} else {
-		status.Set(StoppedText)
-	}
-	statusLabel := widget.NewLabelWithData(status)
-
-	window.SetContent(container.NewVBox(title, settingsForm, startButton, stopButton, statusLabel))
-	return app, window
+func stopUpdateLoop() {
+	log.Println("Spotting stopped")
+	started = false
+	status.Set(StoppedText)
+	pauseLoop <- true
 }
 
 func updateLoop(url string, saveData types.SaveData) {
@@ -130,21 +77,6 @@ func updateLoop(url string, saveData types.SaveData) {
 			}
 		}
 	}
-}
-
-func calculateSearchArea(position types.Position, spotDistanceKm int) types.SearchArea {
-	var sa types.SearchArea
-
-	// Calculate offsets either side of position
-	latSpotOffset := formatters.KmToLatitude(spotDistanceKm)
-	longSpotOffset := formatters.KmToLongitude(spotDistanceKm, position.Latitude)
-
-	// Finalise min and max long and lat by adding/subtracting offset
-	sa.LaMax = fmt.Sprintf("%v", position.Latitude+latSpotOffset)
-	sa.LaMin = fmt.Sprintf("%v", position.Latitude-latSpotOffset)
-	sa.LoMax = fmt.Sprintf("%v", position.Longitude+longSpotOffset)
-	sa.LoMin = fmt.Sprintf("%v", position.Longitude-longSpotOffset)
-	return sa
 }
 
 func updatePlanes(url string) ([]types.PlaneInfo, error) {
@@ -194,7 +126,7 @@ func parseResult(res []interface{}) types.PlaneInfo {
 }
 
 func notifyIfNew(planeInfos []types.PlaneInfo) {
-	saveData, err := save.GetSave(savePath)
+	saveData, err := GetSave(savePath)
 	if err != nil {
 		log.Printf("Error getting saved stats: %v", err)
 	}
@@ -205,7 +137,7 @@ func notifyIfNew(planeInfos []types.PlaneInfo) {
 			continue
 		} else {
 			newPlanes++
-			save.SaveProgress(savePath, p)
+			SaveProgress(savePath, p)
 			messageBody := fmt.Sprintf("%v \n ↑ %v → %v 🧭 %v \nTotal seen: %v", p.Callsign, p.Baro_Altitude, p.Velocity, p.True_Track, saveData.SeenCount+newPlanes)
 			err = beeep.Notify("Plane Spotted!", messageBody, "assets/plane.png")
 			if err != nil {

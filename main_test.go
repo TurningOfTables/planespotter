@@ -49,17 +49,6 @@ func TestParseResult(t *testing.T) {
 
 }
 
-func TestCalculateSearchArea(t *testing.T) {
-	p := types.Position{Longitude: 50.0, Latitude: 49.0}
-	sa := types.SearchArea{LaMax: "49.09000900090009", LaMin: "48.90999099909991", LoMax: "50.027247329926", LoMin: "49.972752670074"}
-
-	res := calculateSearchArea(p, 10)
-
-	assert.Less(t, res.LaMin, res.LaMax)
-	assert.Less(t, res.LoMin, res.LoMax)
-	assert.Equal(t, sa, res)
-}
-
 func TestUpdatePlanes(t *testing.T) {
 	testApiPlane := []interface{}{
 		"testicao", "testcallsign", "testorigincountry", 1234, 5678, 1111.2222, 3333.4444, 5555.66, true, 456.789, 123.456, 789.012, []int{1, 2, 3}, 987.654, "testsquawk", false, 1, 2,

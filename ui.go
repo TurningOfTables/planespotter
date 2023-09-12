@@ -1,15 +1,46 @@
-package ui
+package main
 
 import (
 	"fmt"
-	"planespotter/helpers/save"
 	"planespotter/helpers/types"
 	"strconv"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
+
+func InitUi(url, savePath string, saveData types.SaveData) (fyne.App, fyne.Window) {
+	icon, _ := fyne.LoadResourceFromPath("assets/plane.png")
+	app := app.NewWithID("Planespotter")
+	app.SetIcon(icon)
+	window := WindowSetup(app, icon)
+
+	title := widget.NewLabelWithStyle("Configuration", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	settingsForm := FormSetup(savePath, saveData)
+
+	startButton := widget.NewButton("Start", func() {
+		if !started {
+			startUpdateLoop(url, saveData)
+		}
+	})
+	stopButton := widget.NewButton("Stop", func() {
+		if started {
+			stopUpdateLoop()
+		}
+	})
+
+	if started {
+		status.Set(StartedText)
+	} else {
+		status.Set(StoppedText)
+	}
+	statusLabel := widget.NewLabelWithData(status)
+
+	window.SetContent(container.NewVBox(title, settingsForm, startButton, stopButton, statusLabel))
+	return app, window
+}
 
 func WindowSetup(app fyne.App, icon fyne.Resource) fyne.Window {
 	window := app.NewWindow("Planespotter")
@@ -19,7 +50,7 @@ func WindowSetup(app fyne.App, icon fyne.Resource) fyne.Window {
 	return window
 }
 
-func GenerateSettingsForm(savePath string, saveData types.SaveData) *fyne.Container {
+func FormSetup(savePath string, saveData types.SaveData) *fyne.Container {
 	uiLatitude := widget.NewEntry()
 	uiLatitude.SetText(fmt.Sprintf("%v", saveData.Position.Latitude))
 
@@ -40,8 +71,8 @@ func GenerateSettingsForm(savePath string, saveData types.SaveData) *fyne.Contai
 
 	settingsForm := &widget.Form{
 		Items: []*widget.FormItem{
-			{Text: "Latitude", Widget: uiLatitude},
-			{Text: "Longitude", Widget: uiLongitude},
+			{Text: "Latitude", HintText: "Decimal degrees", Widget: uiLatitude},
+			{Text: "Longitude", HintText: "Decimal degrees", Widget: uiLongitude},
 			{Text: "OpenSky username", Widget: uiUsername},
 			{Text: "OpenSky password", Widget: uiPassword},
 			{Text: "Spot distance (km)", Widget: uiSpotDistance},
@@ -56,7 +87,12 @@ func GenerateSettingsForm(savePath string, saveData types.SaveData) *fyne.Contai
 			newConfig.ApiAuth.Password = uiPassword.Text
 			newConfig.SpotDistanceKm, _ = strconv.Atoi(uiSpotDistance.Text)
 			newConfig.CheckFreqSeconds, _ = strconv.Atoi(uiCheckFreq.Text)
-			save.SaveConfig(savePath, newConfig)
+			SaveConfig(savePath, newConfig)
+			if started {
+				stopUpdateLoop()
+			}
+			url, saveData := InitSaveData(savePath)
+			startUpdateLoop(url, saveData)
 
 		},
 	}

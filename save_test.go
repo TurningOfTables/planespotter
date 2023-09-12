@@ -1,4 +1,4 @@
-package save
+package main
 
 import (
 	"encoding/json"
@@ -9,8 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-var testSavePath = "test_save.json"
 
 func TestCreateSaveIfNotExists(t *testing.T) {
 	_, err := os.Stat(testSavePath)
@@ -106,7 +104,7 @@ func TestSaveConfig(t *testing.T) {
 	}
 }
 
-func TestGetSavedStats(t *testing.T) {
+func TestGetSave(t *testing.T) {
 	err := CreateSaveIfNotExists(testSavePath)
 	if err != nil {
 		t.Error(err)
@@ -135,4 +133,15 @@ func TestGetSavedStats(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+func TestCalculateSearchArea(t *testing.T) {
+	p := types.Position{Longitude: 50.0, Latitude: 49.0}
+	sa := types.SearchArea{LaMax: "49.09000900090009", LaMin: "48.90999099909991", LoMax: "50.027247329926", LoMin: "49.972752670074"}
+
+	res := CalculateSearchArea(p, 10)
+
+	assert.Less(t, res.LaMin, res.LaMax)
+	assert.Less(t, res.LoMin, res.LoMax)
+	assert.Equal(t, sa, res)
 }

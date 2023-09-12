@@ -1,14 +1,41 @@
-package save
+package main
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"planespotter/helpers/formatters"
 	"planespotter/helpers/types"
 
 	"golang.org/x/exp/slices"
 )
+
+func InitSaveData(savePath string) (string, types.SaveData) {
+	saveData, err := GetSave(savePath)
+	if err != nil {
+		log.Println("Error loading save file")
+	}
+
+	sa := CalculateSearchArea(saveData.Config.Position, saveData.Config.SpotDistanceKm)
+	searchUrl, err := url.Parse(baseUrl)
+	if err != nil {
+		log.Println("Error parsing request URL")
+	}
+
+	queryParams := url.Values{
+		"lamin": {sa.LaMin},
+		"lomin": {sa.LoMin},
+		"lamax": {sa.LaMax},
+		"lomax": {sa.LoMax},
+	}
+
+	url := "https://" + saveData.ApiAuth.Username + ":" + saveData.ApiAuth.Password + "@" + searchUrl.String() + queryParams.Encode()
+
+	return url, saveData
+}
 
 func SaveProgress(savePath string, p types.PlaneInfo) {
 	err := CreateSaveIfNotExists(savePath)
@@ -119,4 +146,19 @@ func CreateSaveIfNotExists(savePath string) error {
 		f.Sync()
 	}
 	return nil
+}
+
+func CalculateSearchArea(position types.Position, spotDistanceKm int) types.SearchArea {
+	var sa types.SearchArea
+
+	// Calculate offsets either side of position
+	latSpotOffset := formatters.KmToLatitude(spotDistanceKm)
+	longSpotOffset := formatters.KmToLongitude(spotDistanceKm, position.Latitude)
+
+	// Finalise min and max long and lat by adding/subtracting offset
+	sa.LaMax = fmt.Sprintf("%v", position.Latitude+latSpotOffset)
+	sa.LaMin = fmt.Sprintf("%v", position.Latitude-latSpotOffset)
+	sa.LoMax = fmt.Sprintf("%v", position.Longitude+longSpotOffset)
+	sa.LoMin = fmt.Sprintf("%v", position.Longitude-longSpotOffset)
+	return sa
 }
