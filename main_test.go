@@ -78,7 +78,10 @@ func TestUpdatePlanes(t *testing.T) {
 	}))
 	defer server.Close()
 
-	res := updatePlanes(server.URL)
+	res, err := updatePlanes(server.URL)
+	if err != nil {
+		t.Error(err)
+	}
 
 	expectedResult := []types.PlaneInfo{
 		{
@@ -99,18 +102,21 @@ func TestUpdatePlanesErrors(t *testing.T) {
 	}))
 	defer failingServer.Close()
 
-	assert.PanicsWithError(t, `error getting response from server`, func() { updatePlanes(failingServer.URL) })
+	_, err := updatePlanes(failingServer.URL)
+	assert.Error(t, err)
 
 	missingResBodyServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	assert.PanicsWithError(t, `unexpected end of JSON input`, func() { updatePlanes(missingResBodyServer.URL) })
+	_, err = updatePlanes(missingResBodyServer.URL)
+	assert.Error(t, err)
 
 	badlyFormedResBodyServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte{})
 	}))
 
-	assert.PanicsWithError(t, `unexpected end of JSON input`, func() { updatePlanes(badlyFormedResBodyServer.URL) })
+	_, err = updatePlanes(badlyFormedResBodyServer.URL)
+	assert.Error(t, err)
 }
