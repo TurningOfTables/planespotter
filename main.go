@@ -27,6 +27,7 @@ const baseUrl = "opensky-network.org/api/states/all?"
 
 const StartedText = "Spotting 🔭"
 const StoppedText = "Stopped 🛑"
+const ErrorText = "Error ⚠️"
 
 var savePath = "save.json"
 var pauseLoop = make(chan bool)
@@ -35,6 +36,8 @@ var status = binding.NewString()
 
 func main() {
 	_, window := initApp()
+
+	window.CenterOnScreen()
 	window.ShowAndRun()
 }
 
@@ -114,7 +117,13 @@ func updateLoop(url string, saveData types.SaveData) {
 			return
 		default:
 			if timeSinceCheck >= saveData.CheckFreqSeconds {
-				planeInfos, _ := updatePlanes(url)
+				planeInfos, err := updatePlanes(url)
+				if err != nil {
+					log.Printf("Error updating planes: %v", err)
+					status.Set(ErrorText + " - " + err.Error())
+					started = false
+					pauseLoop <- true
+				}
 				log.Printf("Received %v planes", len(planeInfos))
 				notifyIfNew(planeInfos)
 				timeSinceCheck = 0

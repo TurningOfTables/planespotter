@@ -8,23 +8,11 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
 
 func WindowSetup(app fyne.App, icon fyne.Resource) fyne.Window {
 	window := app.NewWindow("Planespotter")
-	window.SetCloseIntercept(func() {
-		window.Hide()
-	})
-
-	if desk, ok := app.(desktop.App); ok {
-		m := fyne.NewMenu("Planespotter", fyne.NewMenuItem("Settings", func() {
-			window.Show()
-		}))
-		desk.SetSystemTrayIcon(icon)
-		desk.SetSystemTrayMenu(m)
-	}
 	window.Resize(fyne.NewSize(500, 200))
 	window.Hide()
 
@@ -69,6 +57,7 @@ func GenerateSettingsForm(savePath string, saveData types.SaveData) *fyne.Contai
 			newConfig.SpotDistanceKm, _ = strconv.Atoi(uiSpotDistance.Text)
 			newConfig.CheckFreqSeconds, _ = strconv.Atoi(uiCheckFreq.Text)
 			save.SaveConfig(savePath, newConfig)
+
 		},
 	}
 
