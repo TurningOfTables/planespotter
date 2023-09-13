@@ -1,3 +1,5 @@
+// Package types defines various structs to be shared across the app
+
 package types
 
 type SearchArea struct {

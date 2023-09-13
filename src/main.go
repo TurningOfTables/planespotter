@@ -28,6 +28,9 @@ var pauseLoop = make(chan bool)
 var started bool = false
 var status = binding.NewString()
 
+// main creates a new save if required
+// Loads save data
+// Starts the UI
 func main() {
 	err := CreateSaveIfNotExists(savePath)
 	if err != nil {
@@ -41,6 +44,7 @@ func main() {
 	window.ShowAndRun()
 }
 
+// startUpdateLoop takes the API url and saveData, and begins the updateLoop to check for new planes and notify the user
 func startUpdateLoop(url string, saveData types.SaveData) {
 	log.Println("Spotting started")
 	started = true
@@ -48,6 +52,7 @@ func startUpdateLoop(url string, saveData types.SaveData) {
 	go updateLoop(url, saveData)
 }
 
+// stopUpdateLoop stops checking for new planes and notifying the user
 func stopUpdateLoop() {
 	log.Println("Spotting stopped")
 	started = false
@@ -55,6 +60,10 @@ func stopUpdateLoop() {
 	pauseLoop <- true
 }
 
+// updateLoop takes the API url and saveData, and triggers a check for new planes
+// It sends the results to notifyIfNew to send notifications
+// It checks based on the check frequency specified in the config
+// It stops when it receives on the pauseLoop channel
 func updateLoop(url string, saveData types.SaveData) {
 	timeSinceCheck := saveData.CheckFreqSeconds
 	for range time.Tick(time.Second) {
@@ -79,6 +88,9 @@ func updateLoop(url string, saveData types.SaveData) {
 	}
 }
 
+// updatePlanes takes the API url and returns a slice of PlaneInfo
+// It also logs out the remaining API requests to help monitor API usage
+// Returns an error if the request to the API or parsing the response fails
 func updatePlanes(url string) ([]types.PlaneInfo, error) {
 	resp, err := http.Get(url)
 	if err != nil || resp.StatusCode != 200 {
@@ -112,6 +124,8 @@ func updatePlanes(url string) ([]types.PlaneInfo, error) {
 	return planeInfos, nil
 }
 
+// parseResult takes an individual plane response from the API and assigns it to a PlaneInfo object's fields, then returns the PlaneInfo
+// Based on the position in the response as the API doesn't return key/value, just an array
 func parseResult(res []interface{}) types.PlaneInfo {
 	var p types.PlaneInfo
 
@@ -125,6 +139,9 @@ func parseResult(res []interface{}) types.PlaneInfo {
 	return p
 }
 
+// notifyIfNew takes the slice of PlaneInfo
+// For each one, if it has been seen before then it continues without doing anything
+// It it has not been seen before it sends a notification to the user, and updates the save progress
 func notifyIfNew(planeInfos []types.PlaneInfo) {
 	saveData, err := GetSave(savePath)
 	if err != nil {

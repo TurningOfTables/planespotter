@@ -11,6 +11,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// InitUi takes the url, savePath and Save Data to form the main sections of the Fyne UI.
+// Returns the Fyne App and Fyne Window
 func InitUi(url, savePath string, saveData types.SaveData) (fyne.App, fyne.Window) {
 	icon, _ := fyne.LoadResourceFromPath("assets/plane.png")
 	app := app.NewWithID("Planespotter")
@@ -42,6 +44,8 @@ func InitUi(url, savePath string, saveData types.SaveData) (fyne.App, fyne.Windo
 	return app, window
 }
 
+// WindowSetup takes the Fyne App and icon (Fyne Resource) and creates the window with correct size and title
+// Returns the Fyne Window
 func WindowSetup(app fyne.App, icon fyne.Resource) fyne.Window {
 	window := app.NewWindow("Planespotter")
 	window.Resize(fyne.NewSize(500, 200))
@@ -50,6 +54,8 @@ func WindowSetup(app fyne.App, icon fyne.Resource) fyne.Window {
 	return window
 }
 
+// FormSetup takes the savePath and a SaveData, and creates the settings form for the user
+// to update their config with save button. Returns a Fyne Container for inclusion in a Fyne Window.
 func FormSetup(savePath string, saveData types.SaveData) *fyne.Container {
 	uiLatitude := widget.NewEntry()
 	uiLatitude.SetText(fmt.Sprintf("%v", saveData.Position.Latitude))
