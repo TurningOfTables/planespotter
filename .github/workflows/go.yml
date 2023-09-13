@@ -22,6 +22,7 @@ jobs:
 
     - name: Build
       run: | 
+        sudo apt-get install gcc libgl1-mesa-dev xorg-dev
         go install fyne.io/fyne/v2/cmd/fyne@latest
         make build-linux
 
