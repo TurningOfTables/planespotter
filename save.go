@@ -53,26 +53,8 @@ func SaveProgress(savePath string, p types.PlaneInfo) {
 		saveData.Callsigns = append(saveData.Callsigns, p.Callsign)
 	}
 
-	f, err := os.OpenFile(savePath, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Printf("Error saving progress: %v", err)
-	}
-	defer f.Close()
+	SaveToFile(savePath, saveData)
 
-	newSaveJson, err := json.MarshalIndent(saveData, "", "    ")
-	if err != nil {
-		log.Printf("Error saving progress: %v", err)
-	}
-
-	if err := os.Truncate(savePath, 0); err != nil {
-		log.Printf("Error removing old save data")
-	}
-
-	err = os.WriteFile(savePath, newSaveJson, 0644)
-	if err != nil {
-		log.Printf("Error saving progress: %v", err)
-	}
-	f.Sync()
 }
 
 func SaveConfig(savePath string, saveConfig types.Config) {
@@ -81,17 +63,21 @@ func SaveConfig(savePath string, saveConfig types.Config) {
 		log.Printf("Error creating save: %v", err)
 	}
 
-	currentSaveData, err := GetSave(savePath)
+	saveData, err := GetSave(savePath)
 	if err != nil {
 		log.Printf("Error getting current saved state")
 	}
 
 	var newSave = types.SaveData{
 		Config:   saveConfig,
-		Progress: currentSaveData.Progress,
+		Progress: saveData.Progress,
 	}
 
-	newSaveJson, err := json.MarshalIndent(newSave, "", "    ")
+	SaveToFile(savePath, newSave)
+}
+
+func SaveToFile(savePath string, saveData types.SaveData) {
+	newSaveJson, err := json.MarshalIndent(saveData, "", "    ")
 	if err != nil {
 		log.Printf("Error saving progress: %v", err)
 	}
@@ -156,9 +142,9 @@ func CalculateSearchArea(position types.Position, spotDistanceKm int) types.Sear
 	longSpotOffset := formatters.KmToLongitude(spotDistanceKm, position.Latitude)
 
 	// Finalise min and max long and lat by adding/subtracting offset
-	sa.LaMax = fmt.Sprintf("%v", position.Latitude+latSpotOffset)
-	sa.LaMin = fmt.Sprintf("%v", position.Latitude-latSpotOffset)
-	sa.LoMax = fmt.Sprintf("%v", position.Longitude+longSpotOffset)
-	sa.LoMin = fmt.Sprintf("%v", position.Longitude-longSpotOffset)
+	sa.LaMax = fmt.Sprintf("%.4f", position.Latitude+latSpotOffset)
+	sa.LaMin = fmt.Sprintf("%.4f", position.Latitude-latSpotOffset)
+	sa.LoMax = fmt.Sprintf("%.4f", position.Longitude+longSpotOffset)
+	sa.LoMin = fmt.Sprintf("%.4f", position.Longitude-longSpotOffset)
 	return sa
 }

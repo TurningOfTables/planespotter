@@ -4,11 +4,46 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"planespotter/helpers/types"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestStartUpdateLoop(t *testing.T) {
+	err := CreateSaveIfNotExists(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	url, saveData := InitSaveData(testSavePath)
+	assert.False(t, started)
+
+	assert.NotPanics(t, func() { startUpdateLoop(url, saveData) })
+	assert.True(t, started)
+
+	err = os.Remove(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestStopUpdateLoop(t *testing.T) {
+	err := CreateSaveIfNotExists(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	url, saveData := InitSaveData(testSavePath)
+	startUpdateLoop(url, saveData)
+	assert.NotPanics(t, func() { stopUpdateLoop() })
+
+	err = os.Remove(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+}
 
 func TestParseResult(t *testing.T) {
 	// Good API response
@@ -47,6 +82,31 @@ func TestParseResult(t *testing.T) {
 	assert.IsType(t, types.PlaneInfo{}, res)
 	assert.Equal(t, expectedBadResult, res, "parseResult(%+v) expected %+v, got %+v", testApiResponse, expectedBadResult, res)
 
+}
+
+func TestNotifyIfNew(t *testing.T) {
+	err := CreateSaveIfNotExists(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var p = []types.PlaneInfo{
+		{
+			Icao24:        "N/A",
+			Callsign:      "testcallsign",
+			Baro_Altitude: "18227 ft",
+			On_Ground:     "true",
+			Velocity:      "887 kts",
+			True_Track:    "123°",
+		},
+	}
+
+	assert.NotPanics(t, func() { notifyIfNew(p) })
+
+	err = os.Remove(testSavePath)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestUpdatePlanes(t *testing.T) {
