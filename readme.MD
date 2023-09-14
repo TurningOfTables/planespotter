@@ -23,6 +23,8 @@ Lots of things that need tidying up a bit from this initial version, and improve
 3. Fill in your OpenSky username/password, and change your longitude and latitude if required
 4. Click on Start - the status at the bottom should change to 'Spotting'
 
+# Known limitation: Your username/password for OpenSky will be stored in save.json in plain text. Secure it or delete it accordingly. You have been warned :)
+
 ## Potential future improvements
 
 * Some code can still be streamlined, although it has been improved slightly. We convert between types a lot to save and retrieve data. I suspect more could be handled in memory rather than with file read/writes.
